@@ -1,0 +1,83 @@
+ <div class="container">
+        <div class="date-section">
+            <div class="date-group">
+                <label class="date-label">From</label>
+                <div class="date-input-wrapper">
+                    <input type="date" class="date-input" [(ngModel)]="dateRange.fromDate">
+                    <i class="far fa-calendar-alt date-icon"></i>
+                </div>
+            </div>
+            <div class="date-group">
+                <label class="date-label">To</label>
+                <div class="date-input-wrapper">
+                    <input type="date" class="date-input" [(ngModel)]="dateRange.toDate">
+                    <i class="far fa-calendar-alt date-icon"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+        @for (section of controlSections; track section.id) {
+            <div class="control-row">
+                <div class="time-section">
+                    <div class="time-header">
+                        <span class="time-title">{{ section.title }}</span>
+                        <i class="fas fa-redo-alt refresh-icon" (click)="refreshSection(section)"></i>
+                    </div>
+                    
+                    <div class="time-inputs">
+                        <div class="time-group">
+                            <label class="time-label">From Time</label>
+                            <div class="time-input-wrapper">
+                                <input type="time" class="time-input" [(ngModel)]="section.fromTime">
+                                <i class="far fa-clock time-icon"></i>
+                            </div>
+                        </div>
+                        <div class="time-group">
+                            <label class="time-label">To Time</label>
+                            <div class="time-input-wrapper">
+                                <input type="time" class="time-input" [(ngModel)]="section.toTime">
+                                <i class="far fa-clock time-icon"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="apply-btn" (click)="applyFilter(section)" [disabled]="section.isLoading">
+                        @if(section.isLoading) {
+                            <i class="fas fa-spinner fa-spin loading-spinner-icon"></i>
+                        }
+                        {{ section.isLoading ? 'Loading...' : 'Apply' }}
+                    </button>
+                </div>
+
+                <div class="stats-section">
+                    <div class="stats-card">
+                        <div class="stats-row">
+                            <div class="stats-label-column">
+                                <span class="stats-label">kWh</span>
+                            </div>
+                            <div class="stats-value-column">
+                                <span class="stats-value" [class.positive]="section.isPositive">{{ section.purchase }}</span>
+                            </div>
+                        </div>
+                        <!-- <div class="stats-row">
+                            <div class="stats-label-column">
+                                <span class="stats-label">Consumption (kWh)</span>
+                            </div>
+                            <div class="stats-value-column">
+                                <span class="stats-value">{{ section.consumption }}</span>
+                            </div>
+                        </div>
+                        <div class="stats-row">
+                            <div class="stats-label-column">
+                                <span class="stats-label">Surplus (-) / Deficit (+)<br>(kWh)</span>
+                            </div>
+                            <div class="stats-value-column">
+                                <span class="stats-value" [class.positive]="section.isPositive">{{ section.surplus }}</span>
+                            </div>
+                        </div> -->
+                    </div>
+                </div>
+            </div>
+        }
+        </div>
+    </div>
