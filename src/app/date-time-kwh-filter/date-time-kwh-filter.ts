@@ -117,8 +117,10 @@ export class DateTimeKwhFilter {
   private destroy$ = new Subject<void>();
 
   // API Configuration
-    private readonly API_BASE_URL = 'https://meterdashboard.kimbal.io/api/plugins/telemetry/DEVICE/79499e20-948e-11f0-b759-df759c293e70/values/timeseries';
-    private API_TOKEN = 'eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJ0cmFkZXJkYXNoYm9hcmRAa2ltYmFsLmlvIiwidXNlcklkIjoiNzZjZmQyNzAtNWYwMi0xMWYwLWI3NTktZGY3NTljMjkzZTcwIiwic2NvcGVzIjpbIlRFTkFOVF9BRE1JTiJdLCJzZXNzaW9uSWQiOiI0ZTk2MDlkMS1hN2I0LTQxYmYtYmRhOS0zM2JkZDkzMTcyNTMiLCJleHAiOjE3NTkwNTc3NjksImlzcyI6InRoaW5nc2JvYXJkLmlvIiwiaWF0IjoxNzU5MDQ4NzY5LCJmaXJzdE5hbWUiOiJUcmFkZXIiLCJsYXN0TmFtZSI6IkRhc2hib2FyZCBBZG1pbiIsImVuYWJsZWQiOnRydWUsImlzUHVibGljIjpmYWxzZSwidGVuYW50SWQiOiI1ZGU1ZjQxMC01ZjAyLTExZjAtYjc1OS1kZjc1OWMyOTNlNzAiLCJjdXN0b21lcklkIjoiMTM4MTQwMDAtMWRkMi0xMWIyLTgwODAtODA4MDgwODA4MDgwIn0.lRV5vu03n6ErAQk65YcFdsynhmcmSE79T8H2_oeWf8L3QIGwl6ZM9l4USTF8Md8jN-uUkrS9bMPPPlZm-KeAHw';
+    private DEVICE_ID!: string;
+    private API_TOKEN!: string;
+    private readonly API_BASE_TEMPLATE = 'https://meterdashboard.kimbal.io/api/plugins/telemetry/DEVICE/{deviceId}/values/timeseries';
+    private API_BASE_URL!: string; 
 
     constructor(
         private route: ActivatedRoute,
@@ -131,9 +133,10 @@ export class DateTimeKwhFilter {
         this.route.params
             .pipe(takeUntil(this.destroy$))
             .subscribe(params => {
-                this.API_TOKEN = params['token'];
-                console.log('Token from URL:', this.API_TOKEN);
-            });
+              this.DEVICE_ID = params['deviceId'];
+              this.API_TOKEN = params['token'];
+              this.API_BASE_URL = this.API_BASE_TEMPLATE.replace('{deviceId}', this.DEVICE_ID);
+        });
     }
 
     ngOnDestroy(): void {
