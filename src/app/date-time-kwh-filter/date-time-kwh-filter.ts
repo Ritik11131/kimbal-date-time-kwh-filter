@@ -109,10 +109,11 @@ export class DateTimeKwhFilter {
   private destroy$ = new Subject<void>();
 
   // API Configuration
-  private DEVICE_ID!: string;
+  public DEVICE_ID!: string;
   private API_TOKEN!: string;
   private readonly API_BASE_TEMPLATE = 'https://meterdashboard.kimbal.io/api/plugins/telemetry/DEVICE/{deviceId}/values/timeseries';
   private API_BASE_URL!: string;
+  public NAME!:string;
 
   constructor(
     private route: ActivatedRoute,
@@ -141,14 +142,15 @@ export class DateTimeKwhFilter {
   }
 
   ngOnInit(): void {
-    this.route.params
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(params => {
-        this.DEVICE_ID = params['deviceId'];
-        this.API_TOKEN = params['token'];
-        this.API_BASE_URL = this.API_BASE_TEMPLATE.replace('{deviceId}', this.DEVICE_ID);
-      });
-  }
+  this.route.params
+    .pipe(takeUntil(this.destroy$))
+    .subscribe(({ deviceName, deviceId, token }) => {
+      this.NAME = deviceName;
+      this.DEVICE_ID = deviceId;
+      this.API_TOKEN = token;
+      this.API_BASE_URL = this.API_BASE_TEMPLATE.replace('{deviceId}', deviceId);
+    });
+}
 
   ngOnDestroy(): void {
     this.destroy$.next();

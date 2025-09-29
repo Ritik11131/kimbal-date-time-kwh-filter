@@ -4,7 +4,7 @@ import { NotFound } from './not-found/not-found';
 
 export const routes: Routes = [
   {
-    path: ':deviceId/:token',
+    path: ':deviceId/:deviceName/:token',
     component: DateTimeKwhFilter
   },
     {
