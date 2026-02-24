@@ -227,8 +227,9 @@ export class DateTimeKwhFilter {
       return false;
     }
 
-    if (this.dateRange.fromDate === this.dateRange.toDate && section.fromTime >= section.toTime) {
-      alert('From time must be before to time for the same date');
+    // From time must always be less than to time (e.g. 23:00 to 05:00 is not allowed).
+    if (section.fromTime >= section.toTime) {
+      alert('From time must be before to time');
       return false;
     }
 
