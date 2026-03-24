@@ -16,10 +16,14 @@ export interface ControlSectionData {
 }
 
 export interface ApiResponse {
-  [key: string]: Array<{
+  netkvah?: Array<{
     ts: number;
     value: string;
   }>;
+  [key: string]: Array<{
+    ts: number;
+    value: string;
+  }> | undefined;
 }
 
 export interface DateRange {
@@ -37,69 +41,10 @@ export interface DateRange {
 export class DateTimeKwhFilter {
 
   controlSections: ControlSectionData[] = [
-    {
-      id: 'section-1',
-      title: 'SELECT TIME',
-      fromTime: '00:00',
-      toTime: '02:00',
-      purchase: '00.00',
-      isPositive: true,
-      isLoading: false
-    },
-    {
-      id: 'section-2',
-      title: 'SELECT TIME',
-      fromTime: '02:45',
-      toTime: '08:30',
-      purchase: '00.00',
-      isPositive: true,
-      isLoading: false
-    },
-    {
-      id: 'section-3',
-      title: 'SELECT TIME',
-      fromTime: '08:30',
-      toTime: '12:00',
-      purchase: '00.00',
-      isPositive: true,
-      isLoading: false
-    },
-    {
-      id: 'section-4',
-      title: 'SELECT TIME',
-      fromTime: '12:00',
-      toTime: '16:30',
-      purchase: '00.00',
-      isPositive: true,
-      isLoading: false
-    },
-    {
-      id: 'section-5',
-      title: 'SELECT TIME',
-      fromTime: '16:30',
-      toTime: '19:00',
-      purchase: '00.00',
-      isPositive: true,
-      isLoading: false
-    },
-    {
-      id: 'section-6',
-      title: 'SELECT TIME',
-      fromTime: '19:00',
-      toTime: '22:30',
-      purchase: '00.00',
-      isPositive: true,
-      isLoading: false
-    },
-    {
-      id: 'section-7',
-      title: 'SELECT TIME',
-      fromTime: '22:30',
-      toTime: '23:59',
-      purchase: '00.00',
-      isPositive: true,
-      isLoading: false
-    }
+    { id: 'section-1', title: '5AM – 11AM',  fromTime: '05:00', toTime: '11:00', purchase: '00.00', isPositive: true, isLoading: false },
+    { id: 'section-2', title: '11AM – 5PM',  fromTime: '11:00', toTime: '17:00', purchase: '00.00', isPositive: true, isLoading: false },
+    { id: 'section-3', title: '5PM – 11PM',  fromTime: '17:00', toTime: '23:00', purchase: '00.00', isPositive: true, isLoading: false },
+    { id: 'section-4', title: '11PM – 5AM',  fromTime: '23:00', toTime: '05:00', purchase: '00.00', isPositive: true, isLoading: false },
   ];
 
   dateRange!: DateRange;
@@ -227,12 +172,6 @@ export class DateTimeKwhFilter {
       return false;
     }
 
-    // From time must always be less than to time (e.g. 23:00 to 05:00 is not allowed).
-    if (section.fromTime >= section.toTime) {
-      alert('From time must be before to time');
-      return false;
-    }
-
     return true;
   }
 
@@ -303,8 +242,28 @@ export class DateTimeKwhFilter {
   }
 
   private async makeApiCall(date: string, fromTime: string, toTime: string): Promise<ApiResponse> {
-    const startTs = this.convertToTimestamp(date, fromTime);
-    const endTs = this.convertToTimestamp(date, toTime);
+    if (fromTime > toTime) {
+      // Overnight section: split into two calls for the same calendar day
+      // Part 1: fromTime → midnight (start of next day)
+      const next = new Date(date);
+      next.setUTCDate(next.getUTCDate() + 1);
+      const nextDateStr = next.toISOString().split('T')[0];
+      const res1 = await this.fetchTimeseries(date, fromTime, nextDateStr, '00:00');
+
+      await this.delay(500);
+
+      // Part 2: 00:00 → toTime on the same day
+      const res2 = await this.fetchTimeseries(date, '00:00', date, toTime);
+
+      return { netkvah: [...(res1.netkvah || []), ...(res2.netkvah || [])] };
+    }
+
+    return this.fetchTimeseries(date, fromTime, date, toTime);
+  }
+
+  private async fetchTimeseries(startDate: string, startTime: string, endDate: string, endTime: string): Promise<ApiResponse> {
+    const startTs = this.convertToTimestamp(startDate, startTime);
+    const endTs = this.convertToTimestamp(endDate, endTime);
 
     const url = `${this.API_BASE_URL}?keys=netkvah&startTs=${startTs}&endTs=${endTs}&agg=SUM&interval=7200000`;
 
@@ -313,15 +272,11 @@ export class DateTimeKwhFilter {
       'Content-Type': 'application/json'
     });
 
-    const debugInfo = { url, startTs, endTs, date, fromTime, toTime, timestamp: new Date().toISOString() };
+    const debugInfo = { url, startTs, endTs, startDate, startTime, endDate, endTime, timestamp: new Date().toISOString() };
     this.debugApiCalls.push(debugInfo);
 
-    // console.lo'Making API call:', debugInfo);
-
     try {
-      // ✅ use firstValueFrom to stay inside Angular zone
       const response = await firstValueFrom(this.http.get<ApiResponse>(url, { headers }));
-      // console.lo'API Response received:', response);
       return response || {};
     } catch (error) {
       console.error('API Error:', error);
