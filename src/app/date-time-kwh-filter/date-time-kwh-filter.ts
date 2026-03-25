@@ -16,7 +16,7 @@ export interface ControlSectionData {
 }
 
 export interface ApiResponse {
-  netkvah?: Array<{
+  NetkWh?: Array<{
     ts: number;
     value: string;
   }>;
@@ -69,9 +69,12 @@ export class DateTimeKwhFilter {
 
     const today = new Date();
 
-    // Format helper → YYYY-MM-DD
+    // Format helper → YYYY-MM-DD (Literal local date)
     const formatDate = (date: Date): string => {
-      return date.toISOString().split('T')[0];
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
     };
 
     const toDate = formatDate(today);
@@ -177,13 +180,22 @@ export class DateTimeKwhFilter {
 
   private generateDateRanges(section: any): Array<{ date: string, fromTime: string, toTime: string }> {
     const ranges: Array<{ date: string, fromTime: string, toTime: string }> = [];
-    const fromDate = new Date(this.dateRange.fromDate);
-    const toDate = new Date(this.dateRange.toDate);
+    
+    // Parse fromDate and toDate as literal local dates
+    const [fromY, fromM, fromD] = this.dateRange.fromDate.split('-').map(Number);
+    const [toY, toM, toD] = this.dateRange.toDate.split('-').map(Number);
+    
+    const fromDateObj = new Date(fromY, fromM - 1, fromD);
+    const toDateObj = new Date(toY, toM - 1, toD);
 
-    const currentDate = new Date(fromDate);
-
-    while (currentDate <= toDate) {
-      const dateString = currentDate.toISOString().split('T')[0];
+    const currentDate = new Date(fromDateObj);
+    // The System is now TimeZone Sensitive. So works perfectly in IST. For Timezone insensitive needs to be fixed in EMS 1.0
+    while (currentDate <= toDateObj) {
+      const year = currentDate.getFullYear();
+      const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+      const day = String(currentDate.getDate()).padStart(2, '0');
+      const dateString = `${year}-${month}-${day}`;
+      
       ranges.push({
         date: dateString,
         fromTime: section.fromTime || '00:00',
@@ -245,9 +257,14 @@ export class DateTimeKwhFilter {
     if (fromTime > toTime) {
       // Overnight section: split into two calls for the same calendar day
       // Part 1: fromTime → midnight (start of next day)
-      const next = new Date(date);
-      next.setUTCDate(next.getUTCDate() + 1);
-      const nextDateStr = next.toISOString().split('T')[0];
+      const [y, m, d] = date.split('-').map(Number);
+      const next = new Date(y, m - 1, d);
+      next.setDate(next.getDate() + 1);
+      
+      const nextY = next.getFullYear();
+      const nextM = String(next.getMonth() + 1).padStart(2, '0');
+      const nextD = String(next.getDate()).padStart(2, '0');
+      const nextDateStr = `${nextY}-${nextM}-${nextD}`;
       const res1 = await this.fetchTimeseries(date, fromTime, nextDateStr, '00:00');
 
       await this.delay(500);
@@ -255,7 +272,7 @@ export class DateTimeKwhFilter {
       // Part 2: 00:00 → toTime on the same day
       const res2 = await this.fetchTimeseries(date, '00:00', date, toTime);
 
-      return { netkvah: [...(res1.netkvah || []), ...(res2.netkvah || [])] };
+      return { NetkWh: [...(res1.NetkWh || []), ...(res2.NetkWh || [])] };
     }
 
     return this.fetchTimeseries(date, fromTime, date, toTime);
@@ -265,7 +282,7 @@ export class DateTimeKwhFilter {
     const startTs = this.convertToTimestamp(startDate, startTime);
     const endTs = this.convertToTimestamp(endDate, endTime);
 
-    const url = `${this.API_BASE_URL}?keys=netkvah&startTs=${startTs}&endTs=${endTs}&agg=SUM&interval=7200000`;
+    const url = `${this.API_BASE_URL}?keys=NetkWh&startTs=${startTs}&endTs=${endTs}&agg=SUM&interval=7200000`;
 
     const headers = new HttpHeaders({
       'X-Authorization': 'Bearer ' + this.API_TOKEN,
@@ -285,7 +302,8 @@ export class DateTimeKwhFilter {
   }
 
   private convertToTimestamp(date: string, time: string): number {
-    const dateTime = new Date(`${date}T${time}:00.000Z`);
+    // Specifically use IST offset (+05:30) to ensure API parameters are correct regardless of browser TZ
+    const dateTime = new Date(`${date}T${time}:00.000+05:30`);
     return dateTime.getTime();
   }
 
@@ -313,8 +331,8 @@ export class DateTimeKwhFilter {
 
       successfulCalls++;
 
-      if (result.data && result.data.netkvah && Array.isArray(result.data.netkvah)) {
-        result.data.netkvah.forEach((item: any) => {
+      if (result.data && result.data.NetkWh && Array.isArray(result.data.NetkWh)) {
+        result.data.NetkWh.forEach((item: any) => {
           if (item.value && !isNaN(parseFloat(item.value))) {
             const value = parseFloat(item.value);
             totalKwh += value;
@@ -323,7 +341,7 @@ export class DateTimeKwhFilter {
           }
         });
       } else {
-        console.warn(`Result ${index + 1} has no valid netkvah data:`, result.data);
+        console.warn(`Result ${index + 1} has no valid NetkWh data:`, result.data);
       }
     });
 
